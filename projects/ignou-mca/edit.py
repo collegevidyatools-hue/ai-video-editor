@@ -544,7 +544,7 @@ def main():
     json.dump(events, open(os.path.join(outdir, "sfx_events.json"), "w"), indent=1)
 
     mixes = {
-        "final": "[1:a]volume=0.20[m];[m][0:a]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=400[md];"
+        "final": "[1:a]volume=0.55[m];[m][0:a]sidechaincompress=threshold=0.05:ratio=4:attack=30:release=500[md];"
                  "[0:a][md][2:a]amix=inputs=3:weights='1 1 0.55':normalize=0,loudnorm=I=-14:TP=-1.5:LRA=9,aresample=48000[o]",
         "nomusic": "[0:a][2:a]amix=inputs=2:weights='1 0.55':normalize=0,loudnorm=I=-14:TP=-1.5:LRA=9,aresample=48000[o]",
     }
