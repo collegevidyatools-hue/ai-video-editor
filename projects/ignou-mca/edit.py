@@ -264,7 +264,7 @@ def draw_fee_counter(canvas, t, t_show, t_count, t_done, t_end):
     tw, th, l, tt = gfx.text_size(txt, f)
     d.text(((Wd - tw) // 2 - l, 38 - tt), txt, font=f, fill=NAVY if p < 1 else GREEN)
     fs = font("SemiBold", 38)
-    sub = "approx. for the full programme"
+    sub = "approx. total \u2022 excl. registration & exam fees"
     d.text(((Wd - fs.getlength(sub)) // 2, 170), sub, font=fs, fill=GREY)
     im = gfx.shadowed(im, 18, (0, 10), 100)
     s = 1.0 + 0.06 * max(0.0, 1 - abs(t - t_done) / 0.15)  # little bump when it lands
@@ -402,7 +402,7 @@ def overlay(t, c, caps):
     gfx.place(cv, a_header("① ELIGIBILITY"), W / 2, TOP_Y, t, e[0], e[4], "pop")
     gfx.place(cv, a_row("Graduation: any recognised university", size=42), W / 2, TOP_Y + 150, t, e[1], e[4], "left")
     gfx.place(cv, a_row("BCA / CS / IT / any stream", size=44), W / 2, TOP_Y + 285, t, e[2], e[4], "left")
-    gfx.place(cv, a_row("Mathematics is compulsory", size=44), W / 2, TOP_Y + 420, t, e[3], e[4], "left")
+    gfx.place(cv, a_row("Maths in 12th or graduation", size=44), W / 2, TOP_Y + 420, t, e[3], e[4], "left")
 
     # no-entrance stamp
     s = c["stamp"]
