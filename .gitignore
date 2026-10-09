@@ -1,5 +1,5 @@
 output/
-models/
+models
 __pycache__/
 *.wav
 *.mp4

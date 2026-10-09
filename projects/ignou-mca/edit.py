@@ -554,46 +554,47 @@ def main():
              "-ar", "48000", "-ac", "2", os.path.join(tmp, f"mix_{name}.wav")])
 
     # ---------------- video
-    vparts = "".join(f"[0:v]trim={a:.3f}:{b:.3f},setpts=PTS-STARTPTS[v{i}];" for i, (a, b, _) in enumerate(SEGMENTS))
-    reader = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-i", src, "-filter_complex",
-         vparts + "".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0,fps={FPS}[v]",
-         "-map", "[v]", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
+    # Decode the source once, sequentially; for each output frame pick the source
+    # frame at the mapped time (keeps lip-sync exact across every cut).
+    reader = subprocess.Popen(["ffmpeg", "-v", "error", "-i", src, "-vf", f"fps={FPS}", "-f", "rawvideo",
+                               "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
     silent = os.path.join(tmp, "video.mp4")
+    grade = "eq=contrast=1.05:saturation=1.10:gamma=1.02,unsharp=5:5:0.5,format=yuv420p"
     writer = subprocess.Popen(
         ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
-         "-i", "-", "-vf", "format=yuv420p", "-c:v", "libx264", "-preset", "veryfast" if preview else "slow",
-         "-crf", "23" if preview else "17", "-pix_fmt", "yuv420p", silent], stdin=subprocess.PIPE)
+         "-i", "-", "-vf", grade, "-c:v", "libx264", "-preset", "veryfast" if preview else "medium",
+         "-crf", "23" if preview else "18", "-profile:v", "high", "-pix_fmt", "yuv420p", silent],
+        stdin=subprocess.PIPE)
 
     punches = [(cues["money"][1] - 0.05, cues["money"][2]), (cues["stamp"][0] - 0.05, cues["stamp"][1]),
                (cues["place"][1] - 0.05, cues["place"][2]), (cues["cta"][2] - 0.05, cues["cta"][3])]
     fsize = SRC_W * SRC_H * 3
-    k = 0
-    while True:
-        buf = reader.stdout.read(fsize)
-        if len(buf) < fsize:
-            break
+    src_idx, buf = -1, None
+    for k in range(int(DURATION * FPS)):
         t = k / FPS
-        if t > DURATION:
-            break
+        a, b, o = SEGMENTS[seg_index(t)]
+        want = int(round((a + t - o) * FPS))
+        while src_idx < want:
+            nxt = reader.stdout.read(fsize)
+            if len(nxt) < fsize:
+                break
+            buf, src_idx = nxt, src_idx + 1
         frame = Image.frombuffer("RGB", (SRC_W, SRC_H), buf, "raw", "RGB", 0, 1)
         frame = frame.resize((W, H), Image.BICUBIC, box=crop_box(zoom_at(t, punches))).convert("RGBA")
         frame.alpha_composite(overlay(t, cues, caps))
         writer.stdin.write(frame.convert("RGB").tobytes())
-        k += 1
-        if k % 150 == 0:
+        if k % 300 == 0:
             print(f"  frame {k} ({t:.1f}s)", flush=True)
     writer.stdin.close()
     writer.wait()
-    reader.wait()
+    reader.stdout.close()
+    reader.kill()
 
-    grade = "eq=contrast=1.05:saturation=1.10:gamma=1.02,unsharp=5:5:0.5"
     for name in mixes:
         out = os.path.join(outdir, f"ignou_mca_{name}.mp4")
         run(["ffmpeg", "-v", "error", "-y", "-i", silent, "-i", os.path.join(tmp, f"mix_{name}.wav"),
-             "-vf", grade, "-c:v", "libx264", "-preset", "veryfast" if preview else "slow",
-             "-crf", "23" if preview else "18", "-profile:v", "high", "-pix_fmt", "yuv420p",
-             "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out])
+             "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+             "-shortest", "-movflags", "+faststart", out])
     print("done", flush=True)
 
 
