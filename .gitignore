@@ -1,0 +1,6 @@
+output/
+models/
+__pycache__/
+*.wav
+*.mp4
+*.mov
